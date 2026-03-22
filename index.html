@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedVerify — NMC Doctor Verification</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f4f1eb; --card: #ffffff; --ink: #1a1814; --ink-light: #6b6660;
+    --accent: #c5602a; --green: #2a7a4b; --green-bg: #d6efe2;
+    --red: #b02a2a; --red-bg: #f5d8d8; --border: #e0dbd3; --radius: 12px;
+  }
+  body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--ink); min-height: 100vh; }
+
+  header { background: var(--ink); color: white; padding: 16px 36px; display: flex; align-items: center; gap: 12px; }
+  .logo { width: 34px; height: 34px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+  header h1 { font-family: 'DM Serif Display', serif; font-size: 20px; }
+  .live { margin-left: auto; background: var(--green); color: white; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+  .dot { width: 6px; height: 6px; background: #7effc4; border-radius: 50%; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .container { max-width: 760px; margin: 40px auto; padding: 0 20px; }
+  .page-title { font-family: 'DM Serif Display', serif; font-size: 34px; line-height: 1.15; margin-bottom: 6px; }
+  .page-sub { color: var(--ink-light); font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
+
+  .card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 28px 32px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+  .slabel { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); font-weight: 600; margin-bottom: 14px; display: block; }
+
+  /* PROXY URL BAR */
+  .proxy-bar { background: #1e1b18; border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; }
+  .proxy-bar label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 8px; }
+  .proxy-row { display: flex; gap: 8px; }
+  .proxy-row input { flex: 1; background: #2d2926; border: 1.5px solid #3d3830; color: #f0ece6; border-radius: 7px; padding: 9px 13px; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border 0.2s; }
+  .proxy-row input:focus { border-color: var(--accent); }
+  .proxy-row button { background: var(--accent); color: white; border: none; border-radius: 7px; padding: 9px 16px; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+  .proxy-row button:hover { background: #a84e22; }
+  .proxy-msg { font-size: 12px; margin-top: 8px; }
+  .proxy-msg.ok { color: #7effc4; }
+  .proxy-msg.fail { color: #fca5a5; }
+
+  /* REG INPUT */
+  .reg-input { width: 100%; border: 2px solid var(--border); border-radius: 10px; padding: 13px 16px; font-family: 'DM Sans', sans-serif; font-size: 20px; font-weight: 600; letter-spacing: 3px; color: var(--ink); background: #faf9f7; outline: none; transition: all 0.2s; }
+  .reg-input:focus { border-color: var(--accent); background: white; box-shadow: 0 0 0 3px rgba(197,96,42,0.1); }
+  .reg-input.ok { border-color: var(--green); background: #f4fbf7; }
+  .reg-input.fail { border-color: var(--red); background: #fff8f8; }
+  .reg-hint { font-size: 12px; color: var(--ink-light); margin-top: 7px; }
+
+  /* STATUS */
+  .status { margin-top: 14px; border-radius: 10px; padding: 14px 18px; display: none; align-items: flex-start; gap: 12px; animation: up 0.25s ease; }
+  .status.show { display: flex; }
+  .status.loading { background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3; }
+  .status.success { background: var(--green-bg); border: 1px solid #a8d9be; color: var(--green); }
+  .status.error   { background: var(--red-bg); border: 1px solid #e5b0b0; color: var(--red); }
+  @keyframes up { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
+  .spin { width: 18px; height: 18px; border: 2px solid #c7d2fe; border-top-color: #4f46e5; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; margin-top: 1px; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .sicon { font-size: 20px; flex-shrink: 0; line-height: 1.1; }
+  .scontent strong { display: block; font-size: 14px; margin-bottom: 4px; }
+  .scontent p { font-size: 13px; line-height: 1.5; }
+  .nmc-grid { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; background: rgba(255,255,255,0.6); border-radius: 7px; padding: 10px 14px; }
+  .nmc-item { display: flex; flex-direction: column; gap: 1px; }
+  .nmc-lbl { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.5px; }
+  .nmc-val { font-size: 13px; font-weight: 600; }
+
+  /* FORM */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .field label { font-size: 10px; font-weight: 600; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.8px; }
+  .field label .req { color: var(--accent); }
+  .field input, .field select { border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 13px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--ink); background: #faf9f7; outline: none; transition: border 0.2s; }
+  .field input:focus, .field select:focus { border-color: var(--accent); background: white; }
+  .field input.autofilled { border-color: var(--green); background: #f4fbf7; }
+  .af-tag { font-size: 10px; color: var(--green); font-weight: 600; display: none; }
+  .af-tag.show { display: block; }
+
+  .vbadge { display: none; background: linear-gradient(135deg, #1a5c36, #2a7a4b); color: white; border-radius: 9px; padding: 14px 18px; margin-bottom: 18px; }
+  .vbadge.show { display: flex; align-items: center; gap: 12px; }
+  .vbadge .vi { font-size: 24px; }
+  .vbadge strong { display: block; font-size: 15px; margin-bottom: 1px; }
+  .vbadge p { font-size: 12px; opacity: 0.8; margin: 0; }
+
+  .submit-btn { width: 100%; background: var(--ink); color: white; border: none; border-radius: 9px; padding: 14px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 4px; }
+  .submit-btn:hover { background: #2d2a24; }
+  .submit-btn.approved { background: var(--green); }
+
+  /* MODAL */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+  .overlay.show { display: flex; }
+  .modal { background: white; border-radius: 16px; padding: 40px; max-width: 420px; width: 90%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+  .modal .micon { font-size: 52px; margin-bottom: 14px; }
+  .modal h2 { font-family: 'DM Serif Display', serif; font-size: 26px; margin-bottom: 8px; }
+  .modal p { color: var(--ink-light); font-size: 14px; line-height: 1.6; }
+  .modal button { margin-top: 22px; background: var(--ink); color: white; border: none; border-radius: 8px; padding: 12px 28px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+  /* DEPLOY GUIDE */
+  .guide { background: #1e1b18; color: #ccc; border-radius: var(--radius); padding: 24px 28px; margin-bottom: 20px; }
+  .guide h3 { font-family: 'DM Serif Display', serif; font-size: 17px; color: #f4d8c8; margin-bottom: 14px; }
+  .steps { display: flex; flex-direction: column; gap: 10px; }
+  .step { display: flex; gap: 12px; }
+  .sn { width: 22px; height: 22px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; flex-shrink: 0; margin-top: 1px; }
+  .st { font-size: 13px; line-height: 1.6; }
+  .st code { background: #2d2926; color: #f4d8c8; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  .st a { color: #7eb8f4; }
+
+  @media(max-width:580px) {
+    .form-grid, .form-grid.three { grid-template-columns: 1fr; }
+    .card { padding: 20px 16px; }
+    .container { margin: 20px auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚕</div>
+  <h1>MedVerify</h1>
+  <div class="live"><div class="dot"></div>Live NMC</div>
+</header>
+
+<div class="container">
+  <p class="page-title">Doctor NMC<br><em style="color:var(--accent);font-style:italic">Verification Portal</em></p>
+  <p class="page-sub">Queries the National Medical Commission Indian Medical Register in real time. Auto-fills and auto-approves verified doctors instantly.</p>
+
+  <!-- DEPLOY GUIDE -->
+  <div class="guide">
+    <h3>🚀 Deploy your proxy in 5 minutes (free)</h3>
+    <div class="steps">
+      <div class="step"><div class="sn">1</div><div class="st">Download the 4 files: <code>proxy.js</code>, <code>package.json</code>, <code>Dockerfile</code>, <code>railway.toml</code></div></div>
+      <div class="step"><div class="sn">2</div><div class="st">Go to <a href="https://railway.app" target="_blank">railway.app</a> → New Project → Deploy from GitHub (or drag the folder)</div></div>
+      <div class="step"><div class="sn">3</div><div class="st">Railway auto-detects the Dockerfile and deploys. Copy the generated URL (e.g. <code>https://nmc-proxy.up.railway.app</code>)</div></div>
+      <div class="step"><div class="sn">4</div><div class="st">Paste that URL below, click Test — then verify any doctor instantly!</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="slabel">Proxy server URL</span>
+
+    <div class="proxy-bar">
+      <label>Your deployed proxy (Railway / Render / localhost)</label>
+      <div class="proxy-row">
+        <input type="text" id="proxyUrl" value="http://localhost:3001" placeholder="https://your-proxy.up.railway.app" />
+        <button onclick="testProxy()">Test Connection</button>
+      </div>
+      <div class="proxy-msg" id="proxyMsg"></div>
+    </div>
+
+    <span class="slabel">Registration number</span>
+    <input type="text" class="reg-input" id="regNo"
+      placeholder="Type registration number…" maxlength="20"
+      oninput="onInput()" onkeydown="if(event.key==='Enter')verify()" />
+    <p class="reg-hint">Auto-verifies after you stop typing. Press Enter to verify immediately.</p>
+
+    <!-- Status -->
+    <div class="status loading" id="stLoad">
+      <div class="spin"></div>
+      <div class="scontent"><strong>Querying NMC Register…</strong><p>Connecting to the Indian Medical Register in real-time.</p></div>
+    </div>
+    <div class="status success" id="stOk">
+      <div class="sicon">✅</div>
+      <div class="scontent" style="flex:1">
+        <strong>Found in NMC Register</strong><p>Details auto-filled below.</p>
+        <div class="nmc-grid" id="nmcGrid"></div>
+      </div>
+    </div>
+    <div class="status error" id="stErr">
+      <div class="sicon">❌</div>
+      <div class="scontent"><strong id="eTitle">Not found</strong><p id="eMsg"></p></div>
+    </div>
+
+    <!-- FORM -->
+    <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--border);">
+      <span class="slabel">Complete your details</span>
+
+      <div class="vbadge" id="vbadge">
+        <div class="vi">🛡️</div>
+        <div><strong>NMC Verified — Auto-Approval Eligible</strong><p>Your registration is confirmed in the Indian Medical Register.</p></div>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Full Name <span class="req">*</span></label>
+          <input type="text" id="fName" placeholder="As on NMC register" />
+          <span class="af-tag" id="fNameTag">✦ Auto-filled from NMC</span>
+        </div>
+        <div class="field">
+          <label>Father's Name <span class="req">*</span></label>
+          <input type="text" id="fFather" placeholder="Father's full name" />
+          <span class="af-tag" id="fFatherTag">✦ Auto-filled from NMC</span>
+        </div>
+      </div>
+
+      <div class="form-grid three">
+        <div class="field">
+          <label>Reg. Year <span class="req">*</span></label>
+          <input type="text" id="fYear" placeholder="e.g. 2020" />
+          <span class="af-tag" id="fYearTag">✦ Auto-filled from NMC</span>
+        </div>
+        <div class="field">
+          <label>State Council <span class="req">*</span></label>
+          <input type="text" id="fCouncil" placeholder="State Medical Council" />
+          <span class="af-tag" id="fCouncilTag">✦ Auto-filled from NMC</span>
+        </div>
+        <div class="field">
+          <label>State <span class="req">*</span></label>
+          <select id="fState">
+            <option value="">Select State</option>
+            <option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option>
+            <option>Bihar</option><option>Chhattisgarh</option><option>Goa</option>
+            <option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option>
+            <option>Jharkhand</option><option>Karnataka</option><option>Kerala</option>
+            <option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option>
+            <option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option>
+            <option>Odisha</option><option>Punjab</option><option>Rajasthan</option>
+            <option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option>
+            <option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option>
+            <option>West Bengal</option><option>Delhi</option><option>Jammu and Kashmir</option>
+            <option>Puducherry</option><option>Chandigarh</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Mobile <span class="req">*</span></label>
+          <input type="tel" id="fMobile" placeholder="+91 XXXXX XXXXX" />
+        </div>
+        <div class="field">
+          <label>Email <span class="req">*</span></label>
+          <input type="email" id="fEmail" placeholder="doctor@hospital.com" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Qualification / Specialization</label>
+        <input type="text" id="fSpec" placeholder="e.g. MBBS, MD General Medicine" />
+      </div>
+
+      <button class="submit-btn" id="subBtn" onclick="submitForm()">Submit Application</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="micon" id="micon">✅</div>
+    <h2 id="mtitle">Auto-Approved!</h2>
+    <p id="mmsg"></p>
+    <button onclick="document.getElementById('overlay').classList.remove('show')">Done</button>
+  </div>
+</div>
+
+<script>
+let verified = false, timer = null;
+
+const STATES = {
+  'Tamil Nadu':'Tamil Nadu','Maharashtra':'Maharashtra','Karnataka':'Karnataka',
+  'Kerala':'Kerala','Delhi':'Delhi','Rajasthan':'Rajasthan','Gujarat':'Gujarat',
+  'Punjab':'Punjab','Uttar Pradesh':'Uttar Pradesh','West Bengal':'West Bengal',
+  'Andhra Pradesh':'Andhra Pradesh','Telangana':'Telangana',
+  'Madhya Pradesh':'Madhya Pradesh','Bihar':'Bihar','Odisha':'Odisha',
+  'Haryana':'Haryana','Assam':'Assam','Himachal Pradesh':'Himachal Pradesh',
+  'Goa':'Goa','Jharkhand':'Jharkhand','Chhattisgarh':'Chhattisgarh',
+  'Uttarakhand':'Uttarakhand','Chandigarh':'Chandigarh','Puducherry':'Puducherry',
+  'Manipur':'Manipur','Meghalaya':'Meghalaya','Mizoram':'Mizoram',
+  'Nagaland':'Nagaland','Sikkim':'Sikkim','Tripura':'Tripura',
+  'Arunachal Pradesh':'Arunachal Pradesh','Jammu and Kashmir':'Jammu and Kashmir'
+};
+
+function proxy() { return (document.getElementById('proxyUrl').value || 'http://localhost:3001').replace(/\/$/,''); }
+
+async function testProxy() {
+  const el = document.getElementById('proxyMsg');
+  el.textContent = 'Testing…'; el.className = 'proxy-msg';
+  try {
+    const r = await fetch(`${proxy()}/api/nmc-verify?regNo=test`, { signal: AbortSignal.timeout(5000) });
+    await r.json();
+    el.textContent = '✅ Connected! Start verifying below.';
+    el.className = 'proxy-msg ok';
+  } catch {
+    el.textContent = '❌ Cannot reach proxy. Check the URL or run node proxy.js locally.';
+    el.className = 'proxy-msg fail';
+  }
+}
+
+function showSt(id) {
+  ['stLoad','stOk','stErr'].forEach(x => document.getElementById(x).classList.remove('show'));
+  if (id) document.getElementById(id).classList.add('show');
+}
+
+function af(id, val, tag) {
+  const el = document.getElementById(id);
+  el.value = val; el.classList.add('autofilled');
+  document.getElementById(tag).classList.add('show');
+}
+
+function clearForm() {
+  ['fName','fFather','fYear','fCouncil'].forEach(id => { document.getElementById(id).value=''; document.getElementById(id).classList.remove('autofilled'); });
+  ['fNameTag','fFatherTag','fYearTag','fCouncilTag'].forEach(id => document.getElementById(id).classList.remove('show'));
+  document.getElementById('fState').value = '';
+  document.getElementById('vbadge').classList.remove('show');
+  document.getElementById('subBtn').textContent = 'Submit Application';
+  document.getElementById('subBtn').classList.remove('approved');
+  verified = false;
+}
+
+function onInput() {
+  clearTimeout(timer);
+  const v = document.getElementById('regNo').value.trim();
+  document.getElementById('regNo').classList.remove('ok','fail');
+  showSt(null); clearForm();
+  if (v.length >= 4) timer = setTimeout(verify, 750);
+}
+
+async function verify() {
+  const regNo = document.getElementById('regNo').value.trim();
+  if (!regNo) return;
+  showSt('stLoad'); clearForm();
+
+  try {
+    const r = await fetch(`${proxy()}/api/nmc-verify?regNo=${encodeURIComponent(regNo)}`, { signal: AbortSignal.timeout(12000) });
+    const data = await r.json();
+
+    if (data.recordsFiltered > 0 && data.data?.length > 0) {
+      const [,year,,council,name,father] = data.data[0];
+
+      document.getElementById('nmcGrid').innerHTML = `
+        <div class="nmc-item"><span class="nmc-lbl">Doctor name</span><span class="nmc-val">${name}</span></div>
+        <div class="nmc-item"><span class="nmc-lbl">Father's name</span><span class="nmc-val">${father}</span></div>
+        <div class="nmc-item"><span class="nmc-lbl">Year</span><span class="nmc-val">${year}</span></div>
+        <div class="nmc-item"><span class="nmc-lbl">Council</span><span class="nmc-val">${council}</span></div>`;
+
+      showSt('stOk');
+      document.getElementById('regNo').classList.add('ok');
+      af('fName', name, 'fNameTag');
+      af('fFather', father, 'fFatherTag');
+      af('fYear', year, 'fYearTag');
+      af('fCouncil', council, 'fCouncilTag');
+      for (const [k,v] of Object.entries(STATES)) { if (council.includes(k)) { document.getElementById('fState').value=v; break; } }
+      document.getElementById('vbadge').classList.add('show');
+      document.getElementById('subBtn').textContent = '✓ Submit & Auto-Approve';
+      document.getElementById('subBtn').classList.add('approved');
+      verified = true;
+
+    } else if (data.recordsFiltered === 0) {
+      showSt('stErr');
+      document.getElementById('eTitle').textContent = 'Not found in NMC register';
+      document.getElementById('eMsg').textContent = `"${regNo}" was not found. Please double-check the number.`;
+      document.getElementById('regNo').classList.add('fail');
+    } else {
+      throw new Error('Unexpected response from proxy');
+    }
+
+  } catch(e) {
+    showSt('stErr');
+    document.getElementById('eTitle').textContent = 'Proxy not reachable';
+    document.getElementById('eMsg').textContent = 'Make sure your proxy is deployed and the URL above is correct. Click "Test Connection" to check.';
+  }
+}
+
+function submitForm() {
+  const required = { fName:'Name', fFather:"Father's name", fYear:'Year', fCouncil:'State council', fMobile:'Mobile', fEmail:'Email' };
+  for (const [id, label] of Object.entries(required)) {
+    if (!document.getElementById(id).value.trim()) { alert(`Please fill in: ${label}`); return; }
+  }
+  const name = document.getElementById('fName').value.trim();
+  document.getElementById('micon').textContent  = verified ? '✅' : '🕐';
+  document.getElementById('mtitle').textContent = verified ? 'Auto-Approved!' : 'Under Review';
+  document.getElementById('mmsg').textContent   = verified
+    ? `Dr. ${name}, your NMC registration is verified and your application has been automatically approved. Welcome to the platform!`
+    : `Dr. ${name}, your application has been submitted and is pending manual review. You will be notified within 2–3 working days.`;
+  document.getElementById('overlay').classList.add('show');
+}
+</script>
+</body>
+</html>
