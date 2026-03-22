@@ -1,22 +1,53 @@
 // proxy.js — NMC Verification Proxy
-// Deploy to Railway or Render — reads PORT from environment automatically
+// Uses Node's built-in https module (more reliable in containers than fetch)
 
 const express = require('express');
 const cors = require('cors');
+const https = require('https');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Allow requests from any origin (so your frontend HTML can call this)
 app.use(cors());
 
-// Health check — Railway/Render ping this to confirm the server is alive
 app.get('/', (req, res) => {
   res.json({ status: 'ok', service: 'NMC Verify Proxy' });
 });
 
-// Main verification endpoint
-// Usage: GET /api/nmc-verify?regNo=146631
+function httpsGet(url) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      headers: {
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.nmc.org.in/information-desk/indian-medical-register/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Connection': 'keep-alive',
+      },
+      rejectUnauthorized: false, // NMC site has cert issues from some regions
+    };
+
+    const req = https.get(url, options, (response) => {
+      let data = '';
+      response.on('data', chunk => data += chunk);
+      response.on('end', () => {
+        try {
+          resolve({ status: response.statusCode, body: JSON.parse(data) });
+        } catch (e) {
+          reject(new Error(`Invalid JSON from NMC: ${data.slice(0, 200)}`));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.setTimeout(15000, () => {
+      req.destroy();
+      reject(new Error('Request timed out after 15s'));
+    });
+  });
+}
+
 app.get('/api/nmc-verify', async (req, res) => {
   const { regNo } = req.query;
   if (!regNo) return res.status(400).json({ error: 'regNo query param is required' });
@@ -37,23 +68,10 @@ app.get('/api/nmc-verify', async (req, res) => {
     `&name=&registrationNo=${encodeURIComponent(regNo)}&smcId=&year=&_=${Date.now()}`;
 
   try {
-    const response = await fetch(nmcUrl, {
-      headers: {
-        'Accept': 'application/json, text/javascript, */*; q=0.01',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://www.nmc.org.in/information-desk/indian-medical-register/',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'X-Requested-With': 'XMLHttpRequest',
-      }
-    });
-
-    if (!response.ok) {
-      return res.status(502).json({ error: `NMC server returned ${response.status}` });
-    }
-
-    const data = await response.json();
-    res.json(data);
-
+    console.log(`Verifying regNo: ${regNo}`);
+    const { status, body } = await httpsGet(nmcUrl);
+    console.log(`NMC responded: status=${status}, records=${body.recordsFiltered}`);
+    res.json(body);
   } catch (err) {
     console.error('NMC fetch error:', err.message);
     res.status(500).json({ error: 'Failed to reach NMC server', details: err.message });
